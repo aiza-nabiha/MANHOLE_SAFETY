@@ -16,7 +16,47 @@ return `<div class="stats"><div class="stat"><i class="stat-icon blue">▣</i><d
 <div class="row home-bottom"><article class="panel"><div class="head"><div><h2>▥ Gas Response Trend — ${selected}</h2><p>Relative response increase (%)</p></div><div><select id="homeSelect" class="select"><option value="MH-01">MH-01</option><option value="MH-02">MH-02</option><option value="MH-03" selected>MH-03</option><option value="MH-04">MH-04</option><option value="MH-05">MH-05</option><option value="MH-06">MH-06</option></select> <select id="homeRange" class="select"><option value="30m">30 min</option><option value="1h">1 hour</option><option value="6h">6 hours</option><option value="24h">24 hours</option></select></div></div><div class="chartbox"><canvas id="homeChart"></canvas></div></article>
 <article class="panel"><div class="head"><h2>▣ Manhole Inspection / Node Summary</h2><span class="badge offline">${selected}</span></div><div id="nodeSummary" class="summary"></div></article>
 <article class="panel"><div class="head"><h2>♧ Alert Feed</h2><a href="#/alerts">View all →</a></div><div id="banner"></div><div>${ALERTS.slice(0,4).map(alertRow).join("")}</div></article></div>`}
-function renderHomeExtra(){let m=MANHOLES.find(x=>x.id===selected);$("#nodeSummary").innerHTML=[["Worker presence",m.worker],["Gas status",label[m.status]],["Probe Node",m.probe],["Worker Node",m.workerNode],["Surface Unit",m.surface],["Fan status",m.fan?"ON":"OFF"]].map(x=>`<div><span>${x[0]}</span><b>${x[1]}</b></div>`).join("");let a=ALERTS.find(x=>x.active&&(x.type==="HIGH"||x.type==="SOS"));$("#banner").innerHTML=a?`<div class="alertbanner">⚠ <b>${a.title.toUpperCase()} — ${a.manholeId}</b>${a.desc}</div>`:"No high-priority active alerts";chartDraw("homeChart",historyFor(selected,range))}
+
+async function renderHomeExtra() {
+    const m = MANHOLES.find(x => x.id === selected);
+
+    if (!m) return;
+
+    const summary = $("#nodeSummary");
+
+    if (summary) {
+        summary.innerHTML = [
+            ["Worker presence", m.worker],
+            ["Gas status", label[m.status] || m.status],
+            ["Probe Node", m.probe],
+            ["Worker Node", m.workerNode],
+            ["Surface Unit", m.surface],
+            ["Fan status", m.fan ? "ON" : "OFF"]
+        ].map(x =>
+            `<div><span>${x[0]}</span><b>${x[1]}</b></div>`
+        ).join("");
+    }
+
+    const a = ALERTS.find(x =>
+        x.active && ["HIGH", "SOS", "FAULT"].includes(x.type)
+    );
+
+    const banner = $("#banner");
+
+    if (banner) {
+        banner.innerHTML = a
+            ? `<div class="alertbanner">⚠ <b>${a.title.toUpperCase()} — ${a.manholeId}</b>${a.desc}</div>`
+            : "No high-priority active alerts";
+    }
+
+    try {
+        const history = await getHistory(selected);
+        chartDraw("homeChart", history);
+    } catch (error) {
+        console.error("History loading failed:", error);
+    }
+}
+
 function diagram() {
   return `
     <div class="diagram reference-diagram">
