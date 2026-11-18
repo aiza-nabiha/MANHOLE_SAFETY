@@ -1,0 +1,17 @@
+{
+  "manhole_id": "MH-01",
+  "timestamp": "2026-11-07T10:30:00Z",
+  "mq4_response_pct": 14,
+  "mq136_response_pct": 8,
+  "temperature_c": 29,
+  "humidity_pct": 55,
+  "gas_status": "NORMAL",
+  "worker_motion": "OUTSIDE",
+  "sos_active": false,
+  "fan_on": false,
+  "probe_connected": true,
+  "worker_connected": true,
+  "surface_connected": true,
+  "sensor_valid": true,
+  "fault_message": null
+}
