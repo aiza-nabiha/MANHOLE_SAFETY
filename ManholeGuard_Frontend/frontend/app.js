@@ -67,8 +67,127 @@ function diagram() {
     </div>
   `;
 }
-function detail(id){let m=MANHOLES.find(x=>x.id===id)||MANHOLES[0];selected=m.id;let names=["Probe Node","Worker Node","Surface Unit","Wireless Link"];let sensors=[["♨","MQ-4 response",m.mq4==null?"—":m.mq4+"%",m.status],["♨","MQ-136 response",m.mq136==null?"—":m.mq136+"%",m.status],["♧","Temperature",m.temp==null?"—":m.temp+" °C","NORMAL"],["◉","Humidity",m.humidity==null?"—":m.humidity+"%","NORMAL"],["♙","Worker Motion",m.motion==null?"UNKNOWN":m.motion?"ACTIVE":"INACTIVE","NORMAL"],["!","SOS",m.sos?"PRESSED":"NOT PRESSED",m.sos?"HIGH":"NORMAL"],["◉","Fan",m.fan?"ON":"OFF","NORMAL"]];
-return `<div class="head"><div><h2>${m.id} · ${m.location}</h2><p>Individual manhole monitoring · Simulated readings</p></div><div>${badge(m.status)} <a class="button secondary" href="#/home">← Back Home</a></div></div><div class="row detailgrid"><article class="panel"><div class="head"><h2>▣ Manhole Overview Diagram</h2><span class="badge offline">SYSTEM MODEL</span></div>${diagram()}</article><article class="panel"><div class="head"><h2>▥ Node Health</h2><span class="badge offline">DEMO VALUES</span></div><div class="health">${names.map((n,i)=>`<div><div class="healthtop"><b>${n}</b><span>${m.health[i]}%</span></div><div class="track"><div class="fill ${m.health[i]===0?"off":m.health[i]<70?"warn":""}" style="width:${m.health[i]}%"></div></div><small>${m.health[i]===0?"OFFLINE":"Simulated health · ONLINE"}</small></div>`).join("")}</div><p class="muted">Demo health values are placeholders, not calculated from gas readings.</p></article></div><h3 class="sectiontitle">Sensor & Worker Parameters</h3><div class="sensors">${sensors.map(s=>`<article class="sensor ${s[3]==="HIGH"?"danger":s[3]==="MEDIUM"?"warn":""}"><div>${s[0]}</div><small>${s[1]}</small><strong>${s[2]}</strong><span>${s[3]==="HIGH"?"HIGH":s[3]==="MEDIUM"?"MEDIUM":s[3]==="OFFLINE"?"NO DATA":"DEMO"}</span></article>`).join("")}</div><div class="row detailbottom"><article class="panel"><div class="head"><div><h2>▥ Gas Response History</h2><p>MQ-4 and MQ-136 relative response increase (%)</p></div><select id="detailRange" class="select"><option value="30m">30 minutes</option><option value="1h">1 hour</option><option value="6h">6 hours</option><option value="24h">24 hours</option></select></div><div class="chartbox"><canvas id="detailChart"></canvas></div><p class="muted">Prototype thresholds: NORMAL &lt;20%, MEDIUM 20–49%, HIGH ≥50%. Not certified gas safety limits.</p></article><article class="panel"><div class="head"><h2>♧ Recent Alerts & Events</h2><span class="badge offline">${m.id}</span></div><div class="events">${ALERTS.filter(a=>a.manholeId===m.id).map(a=>`<div class="event"><b>${a.title}</b><small>${a.desc}</small><small>${a.time}</small></div>`).join("")||'<div class="empty">No recent events for this manhole.</div>'}</div><div class="summary" style="margin-top:12px"><div><span>Worker presence</span><b>${m.worker}</b></div><div><span>Fan status</span><b>${m.fan?"ON":"OFF"}</b></div><div><span>Last data</span><b>${m.updated}</b></div></div></article></div>`}
+
+function detail(id) {
+    let m = MANHOLES.find(x => x.id === id) || MANHOLES[0];
+
+    if (!m) return "<div class='empty'>No manhole data available.</div>";
+
+    selected = m.id;
+
+    let nodes = [
+        ["Probe Node", m.probe],
+        ["Worker Node", m.workerNode],
+        ["Surface Unit", m.surface],
+        ["Wireless Link", "Not reported"]
+    ];
+
+    let sensors = [
+        ["♨", "MQ-4 response", m.mq4 == null ? "—" : m.mq4 + "%", m.status],
+        ["♨", "MQ-136 response", m.mq136 == null ? "—" : m.mq136 + "%", m.status],
+        ["♧", "Temperature", m.temp == null ? "—" : m.temp + " °C", "NORMAL"],
+        ["◉", "Humidity", m.humidity == null ? "—" : m.humidity + "%", "NORMAL"],
+        ["♙", "Worker Motion", m.worker, "NORMAL"],
+        ["!", "SOS", m.sos ? "PRESSED" : "NOT PRESSED", m.sos ? "HIGH" : "NORMAL"],
+        ["◉", "Fan", m.fan ? "ON" : "OFF", "NORMAL"]
+    ];
+
+    return `
+    <div class="head">
+        <div>
+            <h2>${m.id} · ${m.location}</h2>
+            <p>Individual manhole monitoring · Backend readings</p>
+        </div>
+        <div>${badge(m.status)} <a class="button secondary" href="#/home">← Back Home</a></div>
+    </div>
+
+    <div class="row detailgrid">
+        <article class="panel">
+            <div class="head">
+                <h2>▣ Manhole Overview Diagram</h2>
+                <span class="badge offline">SYSTEM MODEL</span>
+            </div>
+            ${diagram()}
+        </article>
+
+        <article class="panel">
+            <div class="head">
+                <h2>▥ Node Connectivity</h2>
+                <span class="badge offline">BACKEND STATUS</span>
+            </div>
+            <div class="health">
+                ${nodes.map(n => `
+                    <div>
+                        <div class="healthtop">
+                            <b>${n[0]}</b>
+                            <span>${n[1]}</span>
+                        </div>
+                        <small>Connection status reported by backend</small>
+                    </div>
+                `).join("")}
+            </div>
+            ${m.faultMessage ? `<p class="muted">Fault: ${m.faultMessage}</p>` : ""}
+        </article>
+    </div>
+
+    <h3 class="sectiontitle">Sensor & Worker Parameters</h3>
+
+    <div class="sensors">
+        ${sensors.map(s => `
+            <article class="sensor ${s[3] === "HIGH" ? "danger" : s[3] === "MEDIUM" ? "warn" : ""}">
+                <div>${s[0]}</div>
+                <small>${s[1]}</small>
+                <strong>${s[2]}</strong>
+                <span>${s[3]}</span>
+            </article>
+        `).join("")}
+    </div>
+
+    <div class="row detailbottom">
+        <article class="panel">
+            <div class="head">
+                <div>
+                    <h2>▥ Gas Response History</h2>
+                    <p>MQ-4 and MQ-136 relative response increase (%)</p>
+                </div>
+                <select id="detailRange" class="select">
+                    <option value="30m">30 minutes</option>
+                    <option value="1h">1 hour</option>
+                    <option value="6h">6 hours</option>
+                    <option value="24h">24 hours</option>
+                </select>
+            </div>
+            <div class="chartbox">
+                <canvas id="detailChart"></canvas>
+            </div>
+            <p class="muted">
+                MQ values are relative response increases, not certified gas safety limits.
+            </p>
+        </article>
+
+        <article class="panel">
+            <div class="head">
+                <h2>♧ Recent Alerts & Events</h2>
+                <span class="badge offline">${m.id}</span>
+            </div>
+            <div class="events">
+                ${ALERTS.filter(a => a.manholeId === m.id).map(a => `
+                    <div class="event">
+                        <b>${a.title}</b>
+                        <small>${a.desc}</small>
+                        <small>${a.time}</small>
+                    </div>
+                `).join("") || '<div class="empty">No recent events for this manhole.</div>'}
+            </div>
+            <div class="summary" style="margin-top:12px">
+                <div><span>Worker presence</span><b>${m.worker}</b></div>
+                <div><span>Fan status</span><b>${m.fan ? "ON" : "OFF"}</b></div>
+                <div><span>Last data</span><b>${m.updated}</b></div>
+            </div>
+        </article>
+    </div>`;
+}
+
 function alertsPage(){return `<article class="panel"><div class="head"><div><h2>All Alerts & Notifications</h2><p>Events across all six demo manholes</p></div><span class="badge offline">${ALERTS.length} EVENTS</span></div><div class="toolbar"><select id="alertFilter" class="filter"><option value="ALL">All alerts</option><option value="HIGH">Danger / HIGH</option><option value="MEDIUM">Warning / MEDIUM</option><option value="SOS">Worker SOS</option><option value="FAULT">Sensor / Node faults</option><option value="NORMAL">Normal events</option></select><select id="alertState" class="filter"><option value="ALL">All states</option><option value="ACTIVE">Active only</option><option value="RESOLVED">Resolved only</option></select></div><div id="alertRows"></div></article>`}
 function fillAlerts(){let t=$("#alertFilter").value,s=$("#alertState").value,a=ALERTS.filter(x=>(t==="ALL"||x.type===t)&&(s==="ALL"||(s==="ACTIVE"?x.active:!x.active)));$("#alertRows").innerHTML=a.length?`<div class="tablewrap"><table><thead><tr><th>Severity</th><th>Manhole</th><th>Event</th><th>Description</th><th>Time</th><th>State</th></tr></thead><tbody>${a.map(x=>`<tr data-open="${x.manholeId}"><td>${badge(x.type==="SOS"?"HIGH":x.type==="FAULT"?"OFFLINE":x.type)}</td><td>${x.manholeId}</td><td>${x.title}</td><td>${x.desc}</td><td>${x.time}</td><td>${x.active?"Active":"Resolved"}</td></tr>`).join("")}</tbody></table></div>`:'<div class="empty">No alerts match this filter.</div>';bindOpen()}
 function analytics(){let valid=MANHOLES.filter(m=>m.mq4!==null),avg=(k)=>Math.round(valid.reduce((a,m)=>a+m[k],0)/valid.length);return `<div class="kpis"><div class="kpi"><small>HIGH manholes</small><b>${MANHOLES.filter(m=>m.status==="HIGH").length}</b></div><div class="kpi"><small>MEDIUM manholes</small><b>${MANHOLES.filter(m=>m.status==="MEDIUM").length}</b></div><div class="kpi"><small>Average MQ-4 response</small><b>${avg("mq4")}%</b></div><div class="kpi"><small>Average MQ-136 response</small><b>${avg("mq136")}%</b></div></div><div class="row twocharts"><article class="panel"><div class="head"><h2>Manhole-wise Gas Response</h2><span class="badge offline">DEMO</span></div><div class="chartbox largechart"><canvas id="compareChart"></canvas></div></article><article class="panel"><div class="head"><h2>Status Distribution</h2></div><div class="chartbox largechart"><canvas id="statusChart"></canvas></div></article></div><article class="panel" style="margin-top:14px"><div class="head"><h2>Manhole Comparison</h2></div><div class="tablewrap"><table><thead><tr><th>Manhole</th><th>Location</th><th>MQ-4 %</th><th>MQ-136 %</th><th>Status</th><th>Node faults</th></tr></thead><tbody>${MANHOLES.map(m=>`<tr data-open="${m.id}"><td>${m.id}</td><td>${m.location}</td><td>${m.mq4??"—"}</td><td>${m.mq136??"—"}</td><td>${badge(m.status)}</td><td>${m.probe==="OFFLINE"?"1":"0"}</td></tr>`).join("")}</tbody></table></div></article>`}
@@ -77,15 +196,160 @@ function reports(){return `<article class="panel"><div class="head"><div><h2>Gen
 function download(){let id=$("#reportId").value,type=$("#reportType").value,rows=type==="events"?[["Manhole","Type","Title","Description","Time","Active"],...ALERTS.filter(a=>id==="ALL"||a.manholeId===id).map(a=>[a.manholeId,a.type,a.title,a.desc,a.time,a.active])]:[["Manhole","Location","Status","MQ-4 relative response (%)","MQ-136 relative response (%)","Temperature C","Humidity %","Worker","Motion","SOS","Fan","Probe Node","Worker Node","Surface Node","Updated"],...MANHOLES.filter(m=>id==="ALL"||m.id===id).map(m=>[m.id,m.location,m.status,m.mq4??"",m.mq136??"",m.temp??"",m.humidity??"",m.worker,m.motion??"",m.sos,m.fan,m.probe,m.workerNode,m.surface,m.updated])];let csv=rows.map(r=>r.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(",")).join("\\n"),url=URL.createObjectURL(new Blob([csv],{type:"text/csv"})),a=document.createElement("a");a.href=url;a.download="manhole-guard-report.csv";a.click();URL.revokeObjectURL(url);toast("CSV report downloaded")}
 function settings(){return `<article class="panel"><div class="head"><div><h2>Dashboard Preferences</h2><p>Manage display and demo monitoring behaviour.</p></div></div><div class="setting"><div><b>Dark mode</b><small>Use a deep navy monitoring interface.</small></div><input type="checkbox" class="switch" id="darkSetting" ${document.documentElement.dataset.theme==="dark"?"checked":""}></div><div class="setting"><div><b>Desktop notifications</b><small>In-dashboard notification feedback for demo alerts.</small></div><input type="checkbox" class="switch" checked></div><div class="setting"><div><b>Alert sound</b><small>Sound is not enabled in this frontend demo.</small></div><input type="checkbox" class="switch"></div><div class="setting"><div><b>Dashboard refresh interval</b><small>Preference for future API integration.</small></div><select class="select"><option>2 seconds</option><option selected>5 seconds</option><option>10 seconds</option><option>30 seconds</option></select></div><p class="muted">Actual preferences and backend refresh will be connected during API integration.</p></article>`}
 function bindOpen(){$$("[data-open]").forEach(e=>e.addEventListener("click",()=>location.hash="#/manhole/"+e.dataset.open))}
-function render(){let r=route(),titles={home:["Manhole Safety Monitor","Real-time monitoring · Worker safety first","OVERVIEW"],manhole:[r.id+" Monitoring",MANHOLES.find(m=>m.id===r.id)?.location||"Individual monitoring","MANHOLE / "+r.id],alerts:["Alerts & Notifications","Review safety alerts, faults and events","ALERT CENTRE"],analytics:["Analytics","Historical sensor response and comparisons","INSIGHTS"],reports:["Reports","Generate and download monitoring summaries","REPORTING"],settings:["Settings","Configure dashboard preferences","PREFERENCES"]};let t=titles[r.page]||titles.home;$("#title").textContent=t[0];$("#subtitle").textContent=t[1];$("#crumb").textContent=t[2];$$(".sidebar nav a").forEach(a=>a.classList.toggle("active",a.dataset.page===r.page||(r.page==="manhole"&&a.dataset.page==="manhole")));let html=r.page==="home"?home():r.page==="manhole"?detail(r.id):r.page==="alerts"?alertsPage():r.page==="analytics"?analytics():r.page==="reports"?reports():r.page==="settings"?settings():home();$("#view").innerHTML=html;$("#bellCount").textContent=ALERTS.filter(a=>a.active).length;$("#navCount").textContent=ALERTS.filter(a=>a.active).length;bindOpen();
- if(r.page==="home"){let sel=$("#homeSelect");sel.value=selected;renderHomeExtra();sel.addEventListener("change",e=>{selected=e.target.value;window.manualSelect=true;renderHomeExtra()});$("#homeRange").value=range;$("#homeRange").addEventListener("change",e=>{range=e.target.value;renderHomeExtra()})}
- if(r.page==="manhole"){chartDraw("detailChart",historyFor(r.id,range));$("#detailRange").addEventListener("change",e=>{range=e.target.value;chartDraw("detailChart",historyFor(r.id,range))})}
- if(r.page==="alerts"){$("#alertFilter").addEventListener("change",fillAlerts);$("#alertState").addEventListener("change",fillAlerts);fillAlerts()}
- if(r.page==="analytics")drawAnalytics();
- if(r.page==="reports")$("#download").addEventListener("click",download);
- if(r.page==="settings")$("#darkSetting").addEventListener("change",e=>theme(e.target.checked?"dark":"light"))}
+
+async function render() {
+    let r = route();
+
+    if (!MANHOLES.length) {
+        $("#view").innerHTML = `
+            <article class="panel">
+                <h2>Connecting to Manhole Guard backend...</h2>
+                <p>Please wait while readings are fetched.</p>
+            </article>`;
+        return;
+    }
+
+    let titles = {
+        home: ["Manhole Safety Monitor", "Live monitoring · Worker safety first", "OVERVIEW"],
+        manhole: [r.id + " Monitoring", MANHOLES.find(m => m.id === r.id)?.location || "Individual monitoring", "MANHOLE / " + r.id],
+        alerts: ["Alerts & Notifications", "Review safety alerts, faults and events", "ALERT CENTRE"],
+        analytics: ["Analytics", "Sensor response and comparisons", "INSIGHTS"],
+        reports: ["Reports", "Generate and download monitoring summaries", "REPORTING"],
+        settings: ["Settings", "Configure dashboard preferences", "PREFERENCES"]
+    };
+
+    let t = titles[r.page] || titles.home;
+
+    $("#title").textContent = t[0];
+    $("#subtitle").textContent = t[1];
+    $("#crumb").textContent = t[2];
+
+    $$(".sidebar nav a").forEach(a =>
+        a.classList.toggle(
+            "active",
+            a.dataset.page === r.page ||
+            (r.page === "manhole" && a.dataset.page === "manhole")
+        )
+    );
+
+    let html =
+        r.page === "home" ? home() :
+        r.page === "manhole" ? detail(r.id) :
+        r.page === "alerts" ? alertsPage() :
+        r.page === "analytics" ? analytics() :
+        r.page === "reports" ? reports() :
+        r.page === "settings" ? settings() : home();
+
+    $("#view").innerHTML = html;
+
+    $("#bellCount").textContent = ALERTS.filter(a => a.active).length;
+    $("#navCount").textContent = ALERTS.filter(a => a.active).length;
+
+    bindOpen();
+
+    if (r.page === "home") {
+        let sel = $("#homeSelect");
+        sel.value = selected;
+
+        renderHomeExtra();
+
+        sel.addEventListener("change", e => {
+            selected = e.target.value;
+            window.manualSelect = true;
+            renderHomeExtra();
+        });
+
+        $("#homeRange").value = range;
+
+        $("#homeRange").addEventListener("change", e => {
+            range = e.target.value;
+            renderHomeExtra();
+        });
+    }
+
+    if (r.page === "manhole") {
+        $("#detailRange").value = range;
+
+        getHistory(r.id)
+            .then(h => chartDraw("detailChart", h))
+            .catch(error => console.error("History error:", error));
+
+        $("#detailRange").addEventListener("change", async e => {
+            range = e.target.value;
+
+            try {
+                const h = await getHistory(r.id);
+                chartDraw("detailChart", h);
+            } catch (error) {
+                console.error("History error:", error);
+            }
+        });
+    }
+
+    if (r.page === "alerts") {
+        $("#alertFilter").addEventListener("change", fillAlerts);
+        $("#alertState").addEventListener("change", fillAlerts);
+        fillAlerts();
+    }
+
+    if (r.page === "analytics") drawAnalytics();
+
+    if (r.page === "reports") {
+        $("#download").addEventListener("click", download);
+    }
+
+    if (r.page === "settings") {
+        $("#darkSetting").addEventListener("change", e =>
+            theme(e.target.checked ? "dark" : "light")
+        );
+    }
+}
+
 function fillAlerts(){let f=$("#alertFilter").value,s=$("#alertState").value,a=ALERTS.filter(x=>(f==="ALL"||x.type===f)&&(s==="ALL"||(s==="ACTIVE"?x.active:!x.active)));$("#alertRows").innerHTML=a.length?`<div class="tablewrap"><table><thead><tr><th>Severity</th><th>Manhole</th><th>Event</th><th>Description</th><th>Time</th><th>State</th></tr></thead><tbody>${a.map(x=>`<tr data-open="${x.manholeId}"><td>${badge(x.type==="SOS"?"HIGH":x.type==="FAULT"?"OFFLINE":x.type)}</td><td>${x.manholeId}</td><td>${x.title}</td><td>${x.desc}</td><td>${x.time}</td><td>${x.active?"Active":"Resolved"}</td></tr>`).join("")}</tbody></table></div>`:'<div class="empty">No alerts match this filter.</div>';bindOpen()}
 function theme(v){document.documentElement.dataset.theme=v;localStorage.setItem("mg-theme",v);$("#theme").textContent=v==="dark"?"☀":"☾";if(route().page==="settings"&&$("#darkSetting"))$("#darkSetting").checked=v==="dark"}
 function search(q){if(!q.trim())return;let m=MANHOLES.find(x=>x.id.toLowerCase()===q.toLowerCase()||x.location.toLowerCase().includes(q.toLowerCase()));if(m)location.hash="#/manhole/"+m.id;else toast("No matching demo manhole")}
 function tick(){let d=new Date();$("#clock").textContent=d.toLocaleTimeString();$("#date").textContent=d.toLocaleDateString(undefined,{weekday:"short",day:"2-digit",month:"short"})}
-$("#theme").addEventListener("click",()=>theme(document.documentElement.dataset.theme==="dark"?"light":"dark"));$("#bell").addEventListener("click",()=>location.hash="#/alerts");$("#menu").addEventListener("click",()=>$("#sidebar").classList.toggle("open"));$("#search").addEventListener("keydown",e=>{if(e.key==="Enter")search(e.target.value)});window.addEventListener("hashchange",()=>{$("#sidebar").classList.remove("open");render()});theme(localStorage.getItem("mg-theme")||"light");tick();setInterval(tick,1000);render();
+$("#theme").addEventListener("click",()=>theme(document.documentElement.dataset.theme==="dark"?"light":"dark"));$("#bell").addEventListener("click",()=>location.hash="#/alerts");$("#menu").addEventListener("click",()=>$("#sidebar").classList.toggle("open"));$("#search").addEventListener("keydown",e=>{if(e.key==="Enter")search(e.target.value)});window.addEventListener("hashchange",()=>{$("#sidebar").classList.remove("open");render()});
+theme(localStorage.getItem("mg-theme") || "light");
+
+tick();
+setInterval(tick, 1000);
+
+let refreshing = false;
+
+async function loadBackendData(initial = false) {
+    if (refreshing) return;
+
+    refreshing = true;
+
+    try {
+        await refreshData();
+
+        if (!MANHOLES.some(m => m.id === selected)) {
+            selected = MANHOLES[0]?.id || "MH-01";
+        }
+
+        render();
+
+    } catch (error) {
+        console.error("Backend connection failed:", error);
+
+        if (initial && MANHOLES.length === 0) {
+            $("#view").innerHTML = `
+                <article class="panel">
+                    <h2>Unable to connect to backend</h2>
+                    <p>${error.message}</p>
+                    <p>Please check your internet connection and try again.</p>
+                </article>`;
+        }
+
+    } finally {
+        refreshing = false;
+    }
+}
+
+loadBackendData(true);
+
+// Fetch fresh readings every 5 seconds.
+setInterval(() => loadBackendData(false), 5000);
+
