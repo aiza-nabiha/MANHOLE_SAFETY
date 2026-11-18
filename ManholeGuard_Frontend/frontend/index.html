@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manhole Guard | Safety Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head>
+<body><aside class="sidebar" id="sidebar">
+<a class="brand" href="#/home"><b>✚</b><span>MANHOLE<span>GUARD</span><small>SAFETY MONITOR</small></span></a>
+<div class="navlabel">WORKSPACE</div><nav>
+<a data-page="home" href="#/home">⌂ <span>Home Dashboard</span></a>
+<a data-page="manhole" href="#/manhole/MH-01">▣ <span>Manhole Monitoring</span></a>
+<a data-page="alerts" href="#/alerts">♧ <span>Alerts & Events</span><i id="navCount">0</i></a>
+<a data-page="analytics" href="#/analytics">▥ <span>Analytics</span></a>
+<a data-page="reports" href="#/reports">▤ <span>Reports</span></a></nav>
+<div class="navlabel pref">PREFERENCES</div><nav><a data-page="settings" href="#/settings">⚙ <span>Settings</span></a></nav>
+<div class="sidebottom"><div class="demo-chip">● DEMO ENVIRONMENT</div><div class="profile"><b>S</b><span>Supervisor<small>Monitoring desk</small></span></div></div></aside>
+<main class="main"><header class="topbar"><button id="menu" class="menu">☰</button><div class="heading"><small>MANHOLE GUARD / <span id="crumb">OVERVIEW</span></small><h1 id="title">Manhole Safety Monitor</h1><p id="subtitle">Real-time monitoring · Worker safety first</p></div>
+<div class="actions"><label class="search">⌕ <input id="search" placeholder="Search manhole or location…"></label><b class="live">● DEMO LIVE</b><div class="time"><b id="clock">--:--</b><small id="date">--</small></div><button id="theme" class="iconbtn">☾</button><button id="bell" class="iconbtn">♧<em id="bellCount">0</em></button><b class="avatar">S</b></div></header>
+<div class="demo-note"><b>DEMO DATA</b> Simulated readings for six sample manholes. Not connected to live hardware.</div>
+<section id="view"></section><footer>Manhole Guard · Prototype monitoring dashboard <span>MQ values are relative response increases (%), not ppm or LEL.</span></footer></main>
+<div id="toast" class="toast"></div><script src="https://cdn.jsdelivr.net/npm/chart.js"></script><script src="data.js"></script><script src="app.js"></script></body></html>
