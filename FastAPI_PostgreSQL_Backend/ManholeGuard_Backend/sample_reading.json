@@ -1,17 +1,37 @@
 {
+  "schema_version": "1.0",
   "manhole_id": "MH-01",
-  "timestamp": "2026-11-07T10:30:00Z",
-  "mq4_response_pct": 14,
-  "mq136_response_pct": 8,
-  "temperature_c": 29,
-  "humidity_pct": 55,
-  "gas_status": "NORMAL",
-  "worker_motion": "OUTSIDE",
-  "sos_active": false,
-  "fan_on": false,
-  "probe_connected": true,
-  "worker_connected": true,
-  "surface_connected": true,
-  "sensor_valid": true,
-  "fault_message": null
+  "timestamp": "2026-11-18T08:30:00Z",
+  "data_source": "hardware",
+  "gas": {
+    "mq4_response_pct": 25.0,
+    "mq136_response_pct": 12.0,
+    "status": "MEDIUM"
+  },
+  "environment": {
+    "temperature_c": 29.0,
+    "humidity_pct": 60.0
+  },
+  "worker": {
+    "movement_detected": true,
+    "no_movement_alert": false,
+    "sos_pressed": false,
+    "sensor_valid": true
+  },
+  "sensors": {
+    "mq4_valid": true,
+    "mq136_valid": true,
+    "dht11_valid": true
+  },
+  "nodes": {
+    "probe_online": true,
+    "worker_online": true,
+    "surface_online": true
+  },
+  "actuators": {
+    "fan_status": false,
+    "buzzer_status": false,
+    "red_led_status": false,
+    "green_led_status": true
+  }
 }

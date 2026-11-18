@@ -1,26 +1,63 @@
-from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
-from typing import Literal
 
-class ReadingIn(BaseModel):
-    manhole_id: str
-    timestamp: datetime | None = None
+from datetime import datetime
+from typing import Literal
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class GasData(BaseModel):
     mq4_response_pct: float | None = Field(default=None, ge=0)
     mq136_response_pct: float | None = Field(default=None, ge=0)
+    status: Literal["NORMAL", "MEDIUM", "HIGH", "UNKNOWN"]
+
+
+class EnvironmentData(BaseModel):
     temperature_c: float | None = None
     humidity_pct: float | None = Field(default=None, ge=0, le=100)
-    gas_status: Literal["NORMAL", "MEDIUM", "HIGH", "UNKNOWN"]
-    worker_motion: Literal["INSIDE", "OUTSIDE", "UNKNOWN"] = "UNKNOWN"
-    sos_active: bool = False
-    fan_on: bool = False
-    probe_connected: bool = True
-    worker_connected: bool = True
-    surface_connected: bool = True
+
+
+class WorkerData(BaseModel):
+    movement_detected: bool
+    no_movement_alert: bool = False
+    sos_pressed: bool = False
     sensor_valid: bool = True
-    fault_message: str | None = None
+
+
+class SensorData(BaseModel):
+    mq4_valid: bool
+    mq136_valid: bool
+    dht11_valid: bool
+
+
+class NodeData(BaseModel):
+    probe_online: bool
+    worker_online: bool
+    surface_online: bool
+
+
+class ActuatorData(BaseModel):
+    fan_status: bool
+    buzzer_status: bool
+    red_led_status: bool
+    green_led_status: bool
+
+
+class ReadingIn(BaseModel):
+    schema_version: str = "1.0"
+    manhole_id: str
+    timestamp: datetime | None = None
+    data_source: Literal["demo", "hardware"] = "demo"
+
+    gas: GasData
+    environment: EnvironmentData
+    worker: WorkerData
+    sensors: SensorData
+    nodes: NodeData
+    actuators: ActuatorData
+
 
 class ReadingOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: int
     manhole_id: str
     recorded_at: datetime
