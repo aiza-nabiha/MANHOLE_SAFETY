@@ -67,24 +67,52 @@ def _latest_nodes(db: Session, manhole_id: str) -> dict[str, bool]:
     return latest
 
 
+
 def _manhole_payload(db: Session, manhole: models.Manhole) -> dict:
     latest = _latest_reading(db, manhole.id)
     is_online = False
     reading_payload = None
+
     if latest is not None:
         recorded_at = latest.recorded_at
+
         if recorded_at.tzinfo is None:
             recorded_at = recorded_at.replace(tzinfo=timezone.utc)
-        is_online = datetime.now(timezone.utc) - recorded_at <= timedelta(seconds=OFFLINE_AFTER_SECONDS)
-        reading_payload = ReadingOut.model_validate(latest).model_dump(mode="json")
+
+        is_online = (
+            datetime.now(timezone.utc) - recorded_at
+            <= timedelta(seconds=OFFLINE_AFTER_SECONDS)
+        )
+
+        reading_payload = ReadingOut.model_validate(
+            latest
+        ).model_dump(mode="json")
+
         if not is_online:
-            # A stale last-known NORMAL reading must not be presented as current NORMAL.
             reading_payload["gas_status"] = "UNKNOWN"
+
+    # Overall manhole status priority
+    if not is_online:
+        overall_status = "OFFLINE"
+    elif latest.sos_active:
+        overall_status = "EMERGENCY"
+    elif not latest.sensor_valid:
+        overall_status = "FAULT"
+    elif latest.gas_status == "HIGH":
+        overall_status = "DANGER"
+    elif latest.gas_status == "MEDIUM":
+        overall_status = "WARNING"
+    elif latest.gas_status == "NORMAL":
+        overall_status = "SAFE"
+    else:
+        overall_status = "UNKNOWN"
+
     return {
         "id": manhole.id,
         "name": manhole.name,
         "location": manhole.location,
         "connection_status": "ONLINE" if is_online else "OFFLINE",
+        "overall_status": overall_status,
         "latest_reading": reading_payload,
         "nodes": _latest_nodes(db, manhole.id),
     }
@@ -120,6 +148,7 @@ def health():
 @app.get("/api/manholes")
 def get_manholes(db: Session = Depends(get_db)):
     manholes = db.scalars(select(models.Manhole).order_by(models.Manhole.id)).all()
+    
     return [_manhole_payload(db, manhole) for manhole in manholes]
 
 

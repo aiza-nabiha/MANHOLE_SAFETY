@@ -1,12 +1,51 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let selected="MH-03",range="30m",chart=null;
-const rank={HIGH:3,MEDIUM:2,NORMAL:1,OFFLINE:0};
-const label={NORMAL:"Safe",MEDIUM:"Warning",HIGH:"Danger",OFFLINE:"Offline",FAULT:"Sensor fault"};
-const cls=s=>({NORMAL:"normal",MEDIUM:"medium",HIGH:"high",OFFLINE:"offline",FAULT:"fault"}[s]||"offline");
+const rank = {
+  EMERGENCY: 5,
+  DANGER: 4,
+  WARNING: 3,
+  HIGH: 3,
+  MEDIUM: 2,
+  SAFE: 1,
+  NORMAL: 1,
+  FAULT: 0,
+  OFFLINE: -1
+};
+
+const label = {
+  EMERGENCY: "EMERGENCY",
+  DANGER: "Danger",
+  WARNING: "Warning",
+  SAFE: "Safe",
+  NORMAL: "Safe",
+  MEDIUM: "Warning",
+  HIGH: "Danger",
+  OFFLINE: "Offline",
+  FAULT: "Sensor fault",
+  UNKNOWN: "Unknown"
+};
+
+const statusOf = m =>
+  m.overallStatus ||
+  (m.sos ? "EMERGENCY" : m.status);
+const cls = (s) => {
+  return {
+    EMERGENCY: "emergency",
+    DANGER: "high",
+    WARNING: "medium",
+    SAFE: "normal",
+    NORMAL: "normal",
+    MEDIUM: "medium",
+    HIGH: "high",
+    OFFLINE: "offline",
+    FAULT: "fault",
+    UNKNOWN: "offline"
+  }[s] || "offline";
+};
 const badge=s=>`<span class="badge ${cls(s)}">${label[s]||s}</span>`;
 function toast(t){const x=$("#toast");x.textContent=t;x.classList.add("show");setTimeout(()=>x.classList.remove("show"),2200)}
 function route(){let p=location.hash.replace(/^#\/?/,"").split("/");return {page:p[0]||"home",id:p[1]||"MH-01"}}
-function mapSvg(){let pts=[[105,65],[230,150],[360,90],[495,190],[605,95],[665,275]],colors={NORMAL:"#16a36a",MEDIUM:"#e6a01d",HIGH:"#df414b",OFFLINE:"#8995a6"};return `<div class="map"><svg viewBox="0 0 760 340"><defs><pattern id="blocks" width="118" height="90" patternUnits="userSpaceOnUse"><rect width="118" height="90" fill="#eeefe9"/><path d="M7 8h42v27H7zM67 9h42v27H67zM10 53h38v28H10zM67 52h43v29H67z" fill="#fff" stroke="#dddcd4" stroke-width="2"/><path d="M57 0v90M0 43h118" stroke="#fff" stroke-width="10"/></pattern></defs><rect width="760" height="340" fill="url(#blocks)"/><path d="M-20 50C110 75 120 180 220 205S360 245 410 370" fill="none" stroke="#a1d7ec" stroke-width="46"/><path d="M0 300L760 65" stroke="#f2d477" stroke-width="12"/><path d="M330 -20L475 370" stroke="#fff" stroke-width="17"/><path d="M35 180l90-48 72 35-20 78-100 8zM530 15h120l60 70-90 38-90-35zM550 255l125-25 65 90-130 25z" fill="#cde8c7"/><g font-size="11" fill="#78877b"><text x="25" y="25">NORTH PARK</text><text x="565" y="325">RIVER ROAD</text></g>${MANHOLES.map((m,i)=>`<g class="pin" data-open="${m.id}" transform="translate(${pts[i][0]} ${pts[i][1]})"><circle r="14" fill="${colors[m.status]}"/><text y="1">${i+1}</text><title>${m.id} · ${m.location} · ${m.status}</title></g>`).join("")}</svg><div class="map-caption">ILLUSTRATIVE DEMO MAP · NOT ACTUAL GPS</div></div>`}
+function mapSvg(){let pts=[[105,65],[230,150],[360,90],[495,190],[605,95],[665,275]],colors={NORMAL:"#16a36a",MEDIUM:"#e6a01d",HIGH:"#df414b",OFFLINE:"#8995a6"};return `<div class="map"><svg viewBox="0 0 760 340"><defs><pattern id="blocks" width="118" height="90" patternUnits="userSpaceOnUse"><rect width="118" height="90" fill="#eeefe9"/><path d="M7 8h42v27H7zM67 9h42v27H67zM10 53h38v28H10zM67 52h43v29H67z" fill="#fff" stroke="#dddcd4" stroke-width="2"/><path d="M57 0v90M0 43h118" stroke="#fff" stroke-width="10"/></pattern></defs><rect width="760" height="340" fill="url(#blocks)"/><path d="M-20 50C110 75 120 180 220 205S360 245 410 370" fill="none" stroke="#a1d7ec" stroke-width="46"/><path d="M0 300L760 65" stroke="#f2d477" stroke-width="12"/><path d="M330 -20L475 370" stroke="#fff" stroke-width="17"/><path d="M35 180l90-48 72 35-20 78-100 8zM530 15h120l60 70-90 38-90-35zM550 255l125-25 65 90-130 25z" fill="#cde8c7"/><g font-size="11" fill="#78877b"><text x="25" y="25">NORTH PARK</text><text x="565" y="325">RIVER ROAD</text></g>${MANHOLES.map((m,i)=>`<g class="pin" data-open="${m.id}" transform="translate(${pts[i][0]} ${pts[i][1]})"><circle r="14" fill="${colors[statusOf(m)]}"/><text y="1">${i+1}</text><title>${m.id} · ${m.location} · ${m.status}</title></g>`).join("")}</svg><div class="map-caption">ILLUSTRATIVE DEMO MAP · NOT ACTUAL GPS</div></div>`}
 function alertRow(a){return `<div class="alertrow" data-open="${a.manholeId}"><i class="dot ${a.type==="HIGH"||a.type==="SOS"?"high":a.type==="NORMAL"?"normal":"medium"}"></i><div><b>${a.title} · ${a.manholeId}</b><small>${a.desc}</small></div><time>${a.time}</time></div>`}
 function chartDraw(id,h){let el=document.getElementById(id);if(!el||!window.Chart)return;let old=Chart.getChart(el);if(old)old.destroy();let dark=document.documentElement.dataset.theme==="dark",c=dark?"#a9bdd6":"#78869b",g=dark?"#244363":"#e8edf4";chart=new Chart(el,{type:"line",data:{labels:h.labels,datasets:[{label:"MQ-4 relative response (%)",data:h.mq4,borderColor:"#e34d58",backgroundColor:"#e34d5817",fill:true,tension:.35,pointRadius:2},{label:"MQ-136 relative response (%)",data:h.mq136,borderColor:"#3182e8",backgroundColor:"#3182e817",fill:true,tension:.35,pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},plugins:{legend:{position:"bottom",labels:{color:c,boxWidth:8,font:{size:9}}}},scales:{x:{ticks:{color:c,maxTicksLimit:6,font:{size:8}},grid:{color:g}},y:{beginAtZero:true,ticks:{color:c,font:{size:8}},grid:{color:g},title:{display:true,text:"Relative response increase (%)",color:c,font:{size:9}}}}}})}
 function home(){
