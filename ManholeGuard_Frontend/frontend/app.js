@@ -392,5 +392,5 @@ async function loadBackendData(initial = false) {
 loadBackendData(true);
 
 // Fetch fresh readings every 5 seconds.
-setInterval(() => loadBackendData(false), 5000);
+setInterval(() => loadBackendData(false), 1000);
 
