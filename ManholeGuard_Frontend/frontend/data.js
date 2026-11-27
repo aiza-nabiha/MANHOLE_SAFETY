@@ -80,7 +80,9 @@ function normalizeManhole(item) {
 
         buzzer: reading.buzzer_status === true,
         redLed: reading.red_led_status === true,
-        greenLed: reading.green_led_status === true
+        greenLed: reading.green_led_status === true,
+
+        overallStatus: item.overall_status || null
     };
 }
 
@@ -139,6 +141,6 @@ async function getHistory(id) {
     return {
         labels: sorted.map(r => formatTime(r.recorded_at)),
         mq4: sorted.map(r => r.mq4_response_pct ?? null),
-        mq136: sorted.map(r => r.mq136_response_pct ?? null)
+        mq136: sorted.map(r => r.mq136_response_pct ?? null),
     };
 }
