@@ -1,6 +1,8 @@
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let selected="MH-03",range="30m",chart=null;
+const homeHistoryCache = {};
+const homeHistoryLoading = {};
 const rank = {
   EMERGENCY: 5,
   DANGER: 4,
@@ -61,9 +63,9 @@ function route(){
 
 function mapSvg(){
   let pts=[[105,65],[230,150],[360,90],[495,190],[605,95],[665,275]],
-  colors={NORMAL:"#16a36a",MEDIUM:"#e6a01d",HIGH:"#df414b",OFFLINE:"#8995a6"};
+  colors={SAFE:"#16a36a",NORMAL:"#16a36a",WARNING:"#e6a01d",MEDIUM:"#e6a01d",DANGER:"#df414b",HIGH:"#df414b",EMERGENCY:"#df414b",OFFLINE:"#8995a6",FAULT:"#8995a6",UNKNOWN:"#8995a6"};
 
-  return `<div class="map"><svg viewBox="0 0 760 340"><defs><pattern id="blocks" width="118" height="90" patternUnits="userSpaceOnUse"><rect width="118" height="90" fill="#eeefe9"/><path d="M7 8h42v27H7zM67 9h42v27H67zM10 53h38v28H10zM67 52h43v29H67z" fill="#fff" stroke="#dddcd4" stroke-width="2"/><path d="M57 0v90M0 43h118" stroke="#fff" stroke-width="10"/></pattern></defs><rect width="760" height="340" fill="url(#blocks)"/><path d="M-20 50C110 75 120 180 220 205S360 245 410 370" fill="none" stroke="#a1d7ec" stroke-width="46"/><path d="M0 300L760 65" stroke="#f2d477" stroke-width="12"/><path d="M330 -20L475 370" stroke="#fff" stroke-width="17"/><path d="M35 180l90-48 72 35-20 78-100 8zM530 15h120l60 70-90 38-90-35zM550 255l125-25 65 90-130 25z" fill="#cde8c7"/><g font-size="11" fill="#78877b"><text x="25" y="25">NORTH PARK</text><text x="565" y="325">RIVER ROAD</text></g>${MANHOLES.map((m,i)=>`<g class="pin" data-open="${m.id}" transform="translate(${pts[i][0]} ${pts[i][1]})"><circle r="14" fill="${colors[statusOf(m)]}"/><text y="1">${i+1}</text><title>${m.id} · ${m.location} · ${m.status}</title></g>`).join("")}</svg><div class="map-caption">ILLUSTRATIVE DEMO MAP · NOT ACTUAL GPS</div></div>`
+  return `<div class="map"><svg viewBox="0 0 760 340"><defs><pattern id="blocks" width="118" height="90" patternUnits="userSpaceOnUse"><rect width="118" height="90" fill="#eeefe9"/><path d="M7 8h42v27H7zM67 9h42v27H67zM10 53h38v28H10zM67 52h43v29H67z" fill="#fff" stroke="#dddcd4" stroke-width="2"/><path d="M57 0v90M0 43h118" stroke="#fff" stroke-width="10"/></pattern></defs><rect width="760" height="340" fill="url(#blocks)"/><path d="M-20 50C110 75 120 180 220 205S360 245 410 370" fill="none" stroke="#a1d7ec" stroke-width="46"/><path d="M0 300L760 65" stroke="#f2d477" stroke-width="12"/><path d="M330 -20L475 370" stroke="#fff" stroke-width="17"/><path d="M35 180l90-48 72 35-20 78-100 8zM530 15h120l60 70-90 38-90-35zM550 255l125-25 65 90-130 25z" fill="#cde8c7"/><g font-size="11" fill="#78877b"><text x="25" y="25">NORTH PARK</text><text x="565" y="325">RIVER ROAD</text></g>${MANHOLES.map((m,i)=>`<g class="pin" data-open="${m.id}" transform="translate(${pts[i][0]} ${pts[i][1]})"><circle r="14" fill="${colors[statusOf(m)] || "#8995a6"}"/><text y="1">${i+1}</text><title>${m.id} · ${m.location} · ${m.status}</title></g>`).join("")}</svg><div class="map-caption">ILLUSTRATIVE DEMO MAP · NOT ACTUAL GPS</div></div>`
 }
 
 function alertRow(a){
@@ -104,7 +106,7 @@ function chartDraw(id,h){
 function home(){
   let counts=["NORMAL","MEDIUM","HIGH"].map(s=>MANHOLES.filter(m=>m.status===s).length);
   let unavailable=MANHOLES.filter(m=>["OFFLINE","UNKNOWN","FAULT"].includes(m.status)).length;
-  let top=[...MANHOLES].sort((a,b)=>rank[b.status]-rank[a.status]||(b.mq4||0)+(b.mq136||0)-(a.mq4||0)-(a.mq136||0))[0];
+  let top=[...MANHOLES].sort((a,b)=>(rank[statusOf(b)]??-2)-(rank[statusOf(a)]??-2)||(b.mq4||0)+(b.mq136||0)-(a.mq4||0)-(a.mq136||0))[0];
 
   if(!window.manualSelect)selected=top.id;
 
@@ -147,11 +149,25 @@ async function renderHomeExtra() {
       : "No high-priority active alerts";
   }
 
-  try {
-    const history = await getHistory(selected);
-    chartDraw("homeChart", history);
-  } catch (error) {
-    console.error("History loading failed:", error);
+  const manholeId = selected;
+
+  if (homeHistoryCache[manholeId]) {
+    chartDraw("homeChart", homeHistoryCache[manholeId]);
+  } else if (!homeHistoryLoading[manholeId]) {
+    homeHistoryLoading[manholeId] = true;
+
+    try {
+      const history = await getHistory(manholeId);
+      homeHistoryCache[manholeId] = history;
+
+      if (route().page === "home" && selected === manholeId) {
+        chartDraw("homeChart", history);
+      }
+    } catch (error) {
+      console.error("History loading failed:", error);
+    } finally {
+      delete homeHistoryLoading[manholeId];
+    }
   }
 }
 
@@ -468,16 +484,6 @@ async function render() {
       theme(e.target.checked ? "dark" : "light")
     );
   }
-}
-
-function fillAlerts(){
-  let f=$("#alertFilter").value,
-  s=$("#alertState").value,
-  a=ALERTS.filter(x=>(f==="ALL"||x.type===f)&&(s==="ALL"||(s==="ACTIVE"?x.active:!x.active)));
-
-  $("#alertRows").innerHTML=a.length?`<div class="tablewrap"><table><thead><tr><th>Severity</th><th>Manhole</th><th>Event</th><th>Description</th><th>Time</th><th>State</th></tr></thead><tbody>${a.map(x=>`<tr data-open="${x.manholeId}"><td>${badge(x.type==="SOS"?"HIGH":x.type==="FAULT"?"OFFLINE":x.type)}</td><td>${x.manholeId}</td><td>${x.title}</td><td>${x.desc}</td><td>${x.time}</td><td>${x.active?"Active":"Resolved"}</td></tr>`).join("")}</tbody></table></div>`:'<div class="empty">No alerts match this filter.</div>';
-
-  bindOpen()
 }
 
 function theme(v){
